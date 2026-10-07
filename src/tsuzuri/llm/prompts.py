@@ -38,6 +38,7 @@ Required JSON schema:
   "short_summary": "string"
 }}
 
+Search Query: {document.source_query}
 Doc ID: {document.doc_id}
 Title: {document.title}
 Document Type: {document.document_type}

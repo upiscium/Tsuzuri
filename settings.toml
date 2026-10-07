@@ -1,5 +1,5 @@
 searxng_base_url = "https://search.arc.upiscium.dev"
-llm_base_url = "https://ollama-caspar.arc.upiscium.dev/v1"
+llm_base_url = "https://ollama.arc.upiscium.dev/v1"
 llm_model = "qwen3.5:9b"
 llm_structured_output = "auto"
 llm_max_tokens = 2048
