@@ -18,13 +18,18 @@ class SearchResult(BaseModel):
     title: str | None = None
     snippet: str | None = None
     engine: str | None = None
+    score: float | None = None
+    category: str | None = None
     rank: int
     published_hint: str | None = None
     language_hint: str | None = None
+    retrieval_score: float = 0.0
+    query_hits: int = 1
+    engine_hits: int = 1
 
 
 class FilteredUrl(BaseModel):
-    """Search result after deterministic URL filtering."""
+    """Search result after deterministic URL filtering and ranking."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -37,6 +42,10 @@ class FilteredUrl(BaseModel):
     domain: str
     rank: int
     document_type: Literal["html", "pdf", "unknown"]
+    published_hint: str | None = None
+    retrieval_score: float = 0.0
+    query_hits: int = 1
+    engine_hits: int = 1
 
 
 class ExtractedDocument(BaseModel):
@@ -58,10 +67,17 @@ class ExtractedDocument(BaseModel):
         "httpx_trafilatura", "playwright_trafilatura", "pymupdf_pdf"
     ]
     status_code: int | None = None
+    content_type: str | None = None
+    response_bytes: int | None = None
+    raw_chars: int | None = None
     content_hash: str
     fetched_at: datetime
     source_query: str
     search_rank: int
+    published_hint: str | None = None
+    retrieval_score: float = 0.0
+    query_hits: int = 1
+    engine_hits: int = 1
 
 
 class FailedFetch(BaseModel):
@@ -70,6 +86,7 @@ class FailedFetch(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     url: HttpUrl
+    final_url: HttpUrl | None = None
     normalized_url: str
     document_type: Literal["html", "pdf", "unknown"]
     domain: str
@@ -77,6 +94,11 @@ class FailedFetch(BaseModel):
     search_rank: int
     reason: str
     detail: str | None = None
+    status_code: int | None = None
+    content_type: str | None = None
+    response_bytes: int | None = None
+    raw_chars: int | None = None
+    extracted_chars: int | None = None
     failed_at: datetime
 
 
@@ -117,6 +139,26 @@ class ClusterSummary(BaseModel):
     uncertainties: list[str]
     representative_sources: list[str]
     summary: str
+
+
+class CitedPoint(BaseModel):
+    """One synthesized statement grounded in one or more source IDs."""
+
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+    source_ids: list[str] = Field(min_length=1)
+
+
+class ReportSynthesis(BaseModel):
+    """Structured global reduce output for the final report."""
+
+    model_config = ConfigDict(frozen=True)
+
+    headline: str
+    executive_summary: list[CitedPoint]
+    key_developments: list[CitedPoint]
+    uncertainties: list[CitedPoint] = Field(default_factory=list)
 
 
 class FinalReport(BaseModel):

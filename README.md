@@ -6,9 +6,10 @@ Tsuzuri is an MVP Python implementation of a local-LLM-powered news research
 pipeline. It searches, fetches, summarizes, renders a cited Markdown report, and
 optionally uploads artifacts to Nextcloud WebDAV.
 
-The current implementation contains a minimal runnable local pipeline. It can
-search through SearXNG, filter URLs, fetch HTML documents, summarize through
-Ollama, save local artifacts, and optionally upload artifacts to WebDAV.
+The current implementation contains a runnable local pipeline. It searches
+through SearXNG, aggregates and prunes candidates, fetches HTML and PDF sources,
+summarizes through an OpenAI-compatible API, synthesizes a cited global brief,
+and optionally uploads artifacts to WebDAV.
 
 ## MVP Status
 
@@ -21,7 +22,7 @@ Production gaps to address before public exposure:
 - No authentication or authorization on the API/UI.
 - Run state is in memory while the API process is alive.
 - Run history is not reconstructed from existing `outputs/` artifacts yet.
-- Cluster/global reduce summarization is not implemented.
+- Cluster-level reduce is not implemented; global reduce currently runs directly over selected map summaries.
 - Discord notification is not implemented.
 
 ## Current Status
@@ -30,13 +31,18 @@ Implemented:
 
 - Pydantic schemas for pipeline data.
 - URL normalization, deduplication, domain filtering, and document-type routing.
-- Rule-based query expansion.
-- Async SearXNG JSON API client.
+- Topic-neutral rule-based query expansion.
+- Async SearXNG JSON API client with retry for transient engine outages.
+- Cross-query candidate aggregation and deterministic ranking/pruning.
 - HTML fetch validation and extraction with `httpx` and `trafilatura`.
-- PDF fetching with PyMuPDF.
+- PDF fetching with PyMuPDF, wired into the main pipeline.
+- Fetch diagnostics including final URL, HTTP status, content type, response size,
+  raw text size, and extraction failure reason.
 - Local artifact storage under `outputs/{run_id}/`.
-- Minimal orchestrator command for search, filtering, HTML fetch, summarization,
-  report rendering, and artifact saving.
+- Pipeline orchestration for search, ranking, concurrent fetch, map summarization,
+  global reduce, report rendering, and artifact saving.
+- OpenAI-compatible `/v1/chat/completions` client with optional JSON Schema /
+  JSON-object structured output and prompt fallback.
 - Optional WebDAV artifact upload with warn-and-continue failure behavior.
 - Citation extraction, validation, and final Markdown source rendering.
 - FastAPI HTTP API for external applications.
@@ -49,7 +55,10 @@ Not implemented yet:
 - Authentication / access control.
 - Persistent run history across API restarts.
 - Discord notification.
-- Cluster/global reduce summarization.
+- Cluster-level reduce and embedding-based clustering.
+- Browser/Playwright fetch fallback in the default runtime (the HTML fetcher keeps
+  the fallback hook, but no browser implementation is wired yet).
+- Retrieval quality benchmark fixtures and metrics.
 
 ## Requirements
 
@@ -192,21 +201,28 @@ Create `.env`:
 
 ```env
 TSUZURI_SEARXNG_BASE_URL=https://your-searxng.example.com
-TSUZURI_OLLAMA_BASE_URL=https://your-ollama.example.com
-TSUZURI_OLLAMA_MODEL=gemma4:26b
+TSUZURI_LLM_BASE_URL=http://your-openai-compatible-server.example.com/v1
+TSUZURI_LLM_MODEL=qwen3.5:9b
+TSUZURI_LLM_API_KEY=
+TSUZURI_LLM_STRUCTURED_OUTPUT=auto
+TSUZURI_LLM_MAX_TOKENS=2048
 TSUZURI_WEBDAV_BASE_URL=https://your-nextcloud.example.com/remote.php/dav/files/your-user/NAS/Tsuzuri
 
 TSUZURI_QUERY_TIMEOUT_S=10.0
 TSUZURI_FETCH_TIMEOUT_S=30.0
-TSUZURI_OLLAMA_TIMEOUT_S=60.0
+TSUZURI_LLM_TIMEOUT_S=120.0
 TSUZURI_UPLOAD_TIMEOUT_S=15.0
-TSUZURI_MAX_CONCURRENT_FETCHES=3
-TSUZURI_MIN_SUCCESS_CHARS=200
-TSUZURI_MAX_MAP_DOCUMENTS=5
+TSUZURI_MAX_CONCURRENT_FETCHES=6
+TSUZURI_MIN_SUCCESS_CHARS=500
+TSUZURI_PDF_MAX_FILE_MB=30
+TSUZURI_PDF_MAX_PAGES=80
+TSUZURI_MAX_FETCH_DOCUMENTS=40
+TSUZURI_MAX_MAP_DOCUMENTS=12
+TSUZURI_MAX_MAP_DOCUMENTS_PER_DOMAIN=2
 TSUZURI_SEARCH_LANGUAGE=en
 TSUZURI_SEARCH_CATEGORIES=news,general
 TSUZURI_ALLOWED_LANGUAGES=en,ja
-TSUZURI_USER_AGENT=Tsuzuri/0.1
+TSUZURI_USER_AGENT=Tsuzuri/0.2
 
 NEXTCLOUD_USERNAME=your-nextcloud-user
 NEXTCLOUD_PASSWORD=your-nextcloud-app-password
@@ -258,8 +274,9 @@ Secret values are expected through environment variables, with placeholders in
 `.env.example`:
 
 - `TSUZURI_SEARXNG_BASE_URL`
-- `TSUZURI_OLLAMA_BASE_URL`
-- `TSUZURI_OLLAMA_MODEL`
+- `TSUZURI_LLM_BASE_URL`
+- `TSUZURI_LLM_MODEL`
+- `TSUZURI_LLM_API_KEY`
 - `TSUZURI_WEBDAV_BASE_URL`
 - `NEXTCLOUD_USERNAME`
 - `NEXTCLOUD_PASSWORD`
@@ -269,8 +286,10 @@ Secret values are expected through environment variables, with placeholders in
 
 Next implementation slices:
 
-1. Add deterministic document quality filtering.
-2. Add cluster/global reduce summarization.
-3. Add persistent run history from `outputs/{run_id}/summary.json`.
-4. Add API/UI authentication before public deployment.
-5. Add Discord notification.
+1. Add retrieval evaluation fixtures and quality metrics (Precision@k, nDCG,
+   source quality, freshness, diversity, and fetch success rate).
+2. Replace the remaining heuristic query expansion with evaluated query planning.
+3. Add cluster-level reduce / event grouping before global synthesis.
+4. Add a qualified browser fallback for fetch failures that need JavaScript.
+5. Expand supported source/media types after HTML/PDF quality is stable.
+6. Add persistent run history and API/UI authentication before public deployment.

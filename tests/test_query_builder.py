@@ -7,15 +7,15 @@ def test_build_queries_includes_original_query_first() -> None:
     )[0] == ("AI regulation latest developments")
 
 
-def test_build_queries_respects_max_generated_queries() -> None:
+def test_build_queries_uses_topic_neutral_expansions() -> None:
     queries = build_queries(
         "AI regulation latest developments", max_generated_queries=3
     )
 
     assert queries == [
         "AI regulation latest developments",
-        "AI regulation latest developments United States latest news",
-        "AI regulation latest developments European Union latest news",
+        "AI regulation latest developments recent developments",
+        "AI regulation latest developments official",
     ]
 
 

@@ -1,15 +1,15 @@
-"""Rule-based search query expansion."""
+"""Rule-based, topic-neutral search query expansion."""
 
 DEFAULT_EXPANSIONS = [
-    "United States latest news",
-    "European Union latest news",
-    "recent updates",
-    "industry response",
+    "latest",
+    "recent developments",
+    "official",
+    "analysis",
 ]
 
 
 def build_queries(query: str, *, max_generated_queries: int) -> list[str]:
-    """Build deterministic search queries, always including the original query."""
+    """Build deterministic topic-neutral queries, always including the original."""
     clean_query = " ".join(query.split())
     if max_generated_queries <= 1:
         return [clean_query]
@@ -25,6 +25,9 @@ def build_queries(query: str, *, max_generated_queries: int) -> list[str]:
 
 
 def _expand_query(query: str, suffix: str) -> str:
-    if suffix == "recent updates" and "latest" in query.lower():
-        return query.lower().replace("latest", "recent", 1)
+    lower = query.lower()
+    if suffix == "latest" and ("latest" in lower or "recent" in lower):
+        return query
+    if suffix == "recent developments" and "recent" in lower:
+        return query
     return f"{query} {suffix}"

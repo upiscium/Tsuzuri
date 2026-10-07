@@ -1,10 +1,29 @@
-"""Domain and extension filtering for search results."""
+"""Domain, extension, and obvious low-value page filtering."""
 
 from collections import defaultdict
 from collections.abc import Iterable
+from urllib.parse import urlsplit
 
 from tsuzuri.filtering.url_normalizer import classify_document_type, get_domain
 from tsuzuri.schemas import FilteredUrl, SearchResult
+
+LOW_VALUE_PATH_SEGMENTS = {
+    "author",
+    "authors",
+    "category",
+    "categories",
+    "login",
+    "search",
+    "tag",
+    "tags",
+}
+LOW_VALUE_TITLES = {
+    "home",
+    "login",
+    "search",
+    "search results",
+    "subscribe",
+}
 
 
 def filter_search_results(
@@ -14,7 +33,7 @@ def filter_search_results(
     blocked_extensions: set[str],
     max_urls_per_domain: int,
 ) -> list[FilteredUrl]:
-    """Apply deterministic URL filters and per-domain limits."""
+    """Apply deterministic URL filters and per-domain diversity limits."""
     domain_counts: dict[str, int] = defaultdict(int)
     filtered: list[FilteredUrl] = []
 
@@ -24,6 +43,8 @@ def filter_search_results(
         if not domain or _is_blocked_domain(domain, blocked_domains):
             continue
         if _has_blocked_extension(normalized_url, blocked_extensions):
+            continue
+        if _looks_like_low_value_page(result):
             continue
         if domain_counts[domain] >= max_urls_per_domain:
             continue
@@ -40,6 +61,10 @@ def filter_search_results(
                 domain=domain,
                 rank=result.rank,
                 document_type=classify_document_type(normalized_url),
+                published_hint=result.published_hint,
+                retrieval_score=result.retrieval_score,
+                query_hits=result.query_hits,
+                engine_hits=result.engine_hits,
             )
         )
 
@@ -60,3 +85,16 @@ def _has_blocked_extension(url: str, blocked_extensions: set[str]) -> bool:
         for extension in blocked_extensions
         if extension.lower() != ".pdf"
     )
+
+
+def _looks_like_low_value_page(result: SearchResult) -> bool:
+    path_segments = {
+        segment.lower()
+        for segment in urlsplit(result.normalized_url).path.split("/")
+        if segment
+    }
+    if path_segments & LOW_VALUE_PATH_SEGMENTS:
+        return True
+
+    title = (result.title or "").strip().lower()
+    return title in LOW_VALUE_TITLES
