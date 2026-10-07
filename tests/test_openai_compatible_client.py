@@ -1,3 +1,4 @@
+import pytest
 import asyncio
 import json
 
@@ -133,5 +134,72 @@ def test_openai_compatible_client_auto_falls_back_from_structured_output() -> No
             json.loads(requests[1].content)["response_format"]["type"] == "json_object"
         )
         assert "response_format" not in json.loads(requests[2].content)
+
+    asyncio.run(run())
+
+
+def test_openai_compatible_client_supports_standard_reasoning_effort_none() -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"message": {"content": '{"ok":true}'}, "finish_reason": "stop"}
+                ]
+            },
+            request=request,
+        )
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            adapter = OpenAICompatibleClient(
+                base_url="https://llm.example/v1",
+                model="local-9b",
+                api_key=None,
+                timeout_sec=10,
+                temperature=0,
+                max_tokens=2048,
+                retry_count=0,
+                reasoning_effort="none",
+                client=client,
+            )
+            assert await adapter.chat("Return JSON") == '{"ok":true}'
+
+    asyncio.run(run())
+    assert seen[0]["reasoning_effort"] == "none"
+
+
+def test_openai_compatible_client_rejects_empty_truncated_content() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {"content": "", "reasoning": "thinking"},
+                        "finish_reason": "length",
+                    }
+                ]
+            },
+            request=request,
+        )
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            adapter = OpenAICompatibleClient(
+                base_url="https://llm.example/v1",
+                model="local-9b",
+                api_key=None,
+                timeout_sec=10,
+                temperature=0,
+                max_tokens=256,
+                retry_count=0,
+                client=client,
+            )
+            with pytest.raises(ValueError, match="exhausted max_tokens"):
+                await adapter.chat("Return JSON")
 
     asyncio.run(run())

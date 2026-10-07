@@ -3,6 +3,7 @@ llm_base_url = "https://ollama-caspar.arc.upiscium.dev/v1"
 llm_model = "qwen3.5:9b"
 llm_structured_output = "auto"
 llm_max_tokens = 2048
+llm_reasoning_effort = "none"
 webdav_base_url = "https://nas.arc.upiscium.dev/remote.php/dav/files/upiscium/NAS/Tsuzuri"
 query_timeout_s = 10.0
 fetch_timeout_s = 30.0

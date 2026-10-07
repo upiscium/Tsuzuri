@@ -16,6 +16,7 @@ ENV_OVERRIDES = {
     "TSUZURI_LLM_API_KEY": "llm_api_key",
     "TSUZURI_LLM_STRUCTURED_OUTPUT": "llm_structured_output",
     "TSUZURI_LLM_MAX_TOKENS": "llm_max_tokens",
+    "TSUZURI_LLM_REASONING_EFFORT": "llm_reasoning_effort",
     "TSUZURI_WEBDAV_BASE_URL": "webdav_base_url",
     "TSUZURI_QUERY_TIMEOUT_S": "query_timeout_s",
     "TSUZURI_FETCH_TIMEOUT_S": "fetch_timeout_s",
@@ -77,6 +78,7 @@ class RuntimeConfig(BaseModel):
         "auto"
     )
     llm_max_tokens: int = 2048
+    llm_reasoning_effort: str | None = None
     webdav_base_url: str | None = None
     query_timeout_s: float = 10.0
     fetch_timeout_s: float = 30.0

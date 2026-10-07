@@ -102,6 +102,7 @@ class MinimalPipeline:
             timeout_sec=config.llm_timeout_s,
             temperature=config.llm_temperature,
             max_tokens=config.llm_max_tokens,
+            reasoning_effort=config.llm_reasoning_effort,
             retry_count=config.llm_retry_count,
             structured_output=config.llm_structured_output,
         )

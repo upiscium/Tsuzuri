@@ -42,7 +42,7 @@ Implemented:
 - Pipeline orchestration for search, ranking, concurrent fetch, map summarization,
   global reduce, report rendering, and artifact saving.
 - OpenAI-compatible `/v1/chat/completions` client with optional JSON Schema /
-  JSON-object structured output and prompt fallback.
+  JSON-object structured output, prompt fallback, and configurable `reasoning_effort`.
 - Optional WebDAV artifact upload with warn-and-continue failure behavior.
 - Citation extraction, validation, and final Markdown source rendering.
 - FastAPI HTTP API for external applications.
@@ -206,6 +206,7 @@ TSUZURI_LLM_MODEL=qwen3.5:9b
 TSUZURI_LLM_API_KEY=
 TSUZURI_LLM_STRUCTURED_OUTPUT=auto
 TSUZURI_LLM_MAX_TOKENS=2048
+TSUZURI_LLM_REASONING_EFFORT=none
 TSUZURI_WEBDAV_BASE_URL=https://your-nextcloud.example.com/remote.php/dav/files/your-user/NAS/Tsuzuri
 
 TSUZURI_QUERY_TIMEOUT_S=10.0

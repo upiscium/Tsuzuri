@@ -27,3 +27,5 @@
 - Retrieval changes should add deterministic ranking/filtering tests.
 - Run full Ruff, mypy, and pytest before publishing a candidate branch.
 - When testing against the configured SearXNG instance, treat `200 + empty results + unresponsive_engines` as a transient search outage, not a successful zero-result query.
+
+- Treat `reasoning_effort` as a standardized optional chat-completions request field; do not use native backend-specific `think` parameters. On the 2–12B non-reasoning Map baseline, set it to `none` to avoid exhausting `max_tokens` before JSON content is produced.

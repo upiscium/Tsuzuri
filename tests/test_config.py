@@ -47,6 +47,7 @@ def test_runtime_config_overrides_settings_with_openai_compatible_env(
     monkeypatch.setenv("TSUZURI_LLM_BASE_URL", "https://env-llm.example/v1")
     monkeypatch.setenv("TSUZURI_LLM_MODEL", "env-model")
     monkeypatch.setenv("TSUZURI_LLM_API_KEY", "env-key")
+    monkeypatch.setenv("TSUZURI_LLM_REASONING_EFFORT", "none")
     monkeypatch.setenv("TSUZURI_MAX_MAP_DOCUMENTS", "5")
     monkeypatch.setenv("TSUZURI_SEARCH_CATEGORIES", "news,general")
 
@@ -56,6 +57,7 @@ def test_runtime_config_overrides_settings_with_openai_compatible_env(
     assert config.llm_base_url == "https://env-llm.example/v1"
     assert config.llm_model == "env-model"
     assert config.llm_api_key == "env-key"
+    assert config.llm_reasoning_effort == "none"
     assert config.max_map_documents == 5
     assert config.search_categories == ["news", "general"]
 

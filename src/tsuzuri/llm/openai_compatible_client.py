@@ -25,6 +25,7 @@ class OpenAICompatibleClient:
         temperature: float,
         max_tokens: int,
         retry_count: int,
+        reasoning_effort: str | None = None,
         structured_output: StructuredOutputMode = "auto",
         client: httpx.AsyncClient | None = None,
         retry_delay_sec: float = 1.0,
@@ -36,6 +37,7 @@ class OpenAICompatibleClient:
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._retry_count = retry_count
+        self._reasoning_effort = reasoning_effort
         self._structured_output = structured_output
         self._client = client
         self._retry_delay_sec = retry_delay_sec
@@ -139,6 +141,8 @@ class OpenAICompatibleClient:
         }
         if response_format is not None:
             body["response_format"] = response_format
+        if self._reasoning_effort is not None:
+            body["reasoning_effort"] = self._reasoning_effort
         return body
 
     def _headers(self) -> dict[str, str]:
@@ -191,4 +195,11 @@ def _message_content(data: JsonObject) -> str:
     content = message.get("content")
     if not isinstance(content, str):
         raise ValueError("OpenAI-compatible response missing message content")
+    if not content:
+        if first_choice.get("finish_reason") == "length":
+            raise ValueError(
+                "Completion exhausted max_tokens without answer content; "
+                "reduce reasoning_effort or increase max_tokens"
+            )
+        raise ValueError("OpenAI-compatible response returned empty message content")
     return content
