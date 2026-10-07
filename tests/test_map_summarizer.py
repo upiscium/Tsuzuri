@@ -74,6 +74,8 @@ def test_map_summarizer_parses_json_summary() -> None:
         assert summary.relevance_score == 4
         assert "https://example.com/news" not in client.prompts[0]
         assert "Search Query: AI regulation" in client.prompts[0]
+        assert "Relevance scoring rubric:" in client.prompts[0]
+        assert '"relevance_score": 1' not in client.prompts[0]
         assert client.schemas[0] is not None
         assert client.schemas[0]["title"] == "MapSummary"
 

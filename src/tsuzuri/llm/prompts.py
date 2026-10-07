@@ -15,7 +15,11 @@ Rules:
 - Normalize Japanese content into English.
 - Use the exact doc_id shown below.
 - Do not include URLs.
-- If the document is irrelevant or search noise, set is_search_noise=true and relevance_score<=2.
+- Judge relevance against the Search Query shown below, not source authority or article length.
+- Relevance scoring rubric: 5 = directly addresses the query with substantive facts; 4 = strongly relevant; 3 = useful partial context; 2 = mostly tangential; 1 = unrelated or listing/navigation text.
+- If the document's main subject directly matches the query, assign 4 or 5 even if it also provides background information.
+- For irrelevant or search-noise documents, set is_search_noise=true and relevance_score<=2.
+- For relevant documents scoring 3 to 5, set is_search_noise=false.
 - Prefer concrete facts, dates, entities, and explicit uncertainty over generic prose.
 
 Required JSON schema:
@@ -24,7 +28,7 @@ Required JSON schema:
   "title": "string",
   "document_type": "html or pdf",
   "language": "en, ja, or null",
-  "relevance_score": 1,
+  "relevance_score": 5,
   "is_news_like": true,
   "is_search_noise": false,
   "topic_tags": ["string"],
