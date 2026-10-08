@@ -158,35 +158,75 @@ just frontend-dev
 
 ## Docker
 
-Build the local image:
+Tsuzuri supports **bundled** and **external** SearXNG deployments. On a regular
+Docker host, Compose loads `docker-compose.yml` and
+`docker-compose.override.yml` together. The override adds an official SearXNG
+service with a small, curated engine set and connects Tsuzuri using
+`http://searxng:8080` on the Docker network. SearXNG does **not** publish a
+host port. The LLM remains an independent OpenAI-compatible endpoint.
+
+### Bundled SearXNG (default)
 
 ```bash
-just docker-build
+cp .env.example .env
+openssl rand -hex 32  # insert the output as TSUZURI_SEARXNG_SECRET in .env
+# Also configure TSUZURI_LLM_BASE_URL and TSUZURI_LLM_MODEL in .env.
+docker compose up -d --build
+docker compose ps
 ```
 
-Run the API with Docker Compose:
+The secret is required for the bundled service and must not be committed.
+`TSUZURI_LLM_BASE_URL` must be reachable **from inside** the API container;
+`localhost` inside a container is not your LLM host. The application runs at
+`http://127.0.0.1:8000/ui/` when accessed from the Docker host. Be aware
+that the existing base Compose file publishes port 8000 on the host's network
+interfaces and the API currently has no authentication: restrict access to a
+trusted network or bind the port to loopback before exposing it more widely.
+
+SearXNG service health indicates that the HTTP API is ready, **not** that
+upstream search engines are working. Verify that at least one real query
+returns results before relying on the deployment:
 
 ```bash
-just docker-up
+just docker-search-smoke
+# Alternative: inspect SearXNG logs
+docker compose logs --tail=100 searxng
 ```
 
-Stop it:
+SearXNG uses `searxng/settings.yml`, enables the JSON search API, and does
+not require Redis/Valkey because the limiter is disabled for this private
+service. Its image is pinned to a dated upstream tag; override it only for
+a qualified upgrade with `TSUZURI_SEARXNG_IMAGE` in `.env`. Search engines
+may still impose CAPTCHA, rate limits, or downtime independently.
+
+### External SearXNG (backward-compatible)
+
+Set `TSUZURI_SEARXNG_BASE_URL` to the external search API's URL in `.env`.
+Then explicitly use **only** the base Compose file to omit the bundled
+SearXNG service and its secret requirement:
 
 ```bash
-just docker-down
+docker compose -f docker-compose.yml up -d --build
+# Or: just docker-up-external
 ```
 
-The compose service exposes the API on `http://127.0.0.1:8000`, mounts
-`./outputs` for artifacts, and reads `.env` for runtime configuration and
-secrets when present.
+Use matching Compose file arguments when stopping: `just docker-down` for
+bundled mode, or `just docker-down-external` for external mode. The Dockerfile
+continues to build the React UI and FastAPI into one Tsuzuri API image.
+Intermediate/final artifacts remain mounted under `./outputs`.
 
-The Docker image builds the React frontend and serves it from `/ui/` in the same
-FastAPI container.
+**Runtime limitation:** Docker-in-LXC is not automatically supported. The
+provided unprivileged `arca-sandbox` LXC cannot create nested containers
+because of overlay and `/proc` mount restrictions. The native SearXNG probe
+at `127.0.0.1:18888` works there, but the bundled Compose deployment must
+be tested on a Docker-capable host without relaxing Proxmox LXC security.
 
 ### Use From Another Directory
 
-You can run Tsuzuri from outside this repository with only a Compose file,
-`.env`, and an `outputs/` directory.
+The legacy standalone `example.compose.yml` still supports an **external**
+SearXNG endpoint. You can run it from outside this repository with only a
+Compose file, `.env`, and an `outputs/` directory. For bundled mode use the
+repository Compose files above.
 
 Copy `example.compose.yml` to your deployment directory as `compose.yml`:
 
@@ -196,6 +236,29 @@ cd tsuzuri-deploy
 curl -fsSLo compose.yml \
   https://raw.githubusercontent.com/uPiscium/Tsuzuri/v0.1.1/example.compose.yml
 ```
+
+For the **bundled** deployment from an arbitrary directory, download
+`example.bundled.override.yml` alongside `compose.yml` as
+`compose.override.yml`, and download the dedicated SearXNG settings file.
+Use a branch or release that contains this Compose feature:
+
+```bash
+TSUZURI_SOURCE_REF=main  # or pin a published release tag
+mkdir -p searxng outputs
+curl -fsSLo compose.yml \
+  "https://raw.githubusercontent.com/uPiscium/Tsuzuri/${TSUZURI_SOURCE_REF}/example.compose.yml"
+curl -fsSLo compose.override.yml \
+  "https://raw.githubusercontent.com/uPiscium/Tsuzuri/${TSUZURI_SOURCE_REF}/example.bundled.override.yml"
+curl -fsSLo searxng/settings.yml \
+  "https://raw.githubusercontent.com/uPiscium/Tsuzuri/${TSUZURI_SOURCE_REF}/searxng/settings.yml"
+```
+
+Add `TSUZURI_SOURCE_REF` and a generated `TSUZURI_SEARXNG_SECRET` to `.env`,
+configure the reachable LLM endpoint, then run `docker compose up -d --build`.
+The standalone override builds Tsuzuri from the specified source revision and
+starts SearXNG privately as a second service. The original standalone
+`example.compose.yml` remains external-search-only when used without the
+override.
 
 Create `.env`:
 
@@ -274,7 +337,8 @@ use `TSUZURI_*` environment variables instead of mounting `settings.toml`.
 Secret values are expected through environment variables, with placeholders in
 `.env.example`:
 
-- `TSUZURI_SEARXNG_BASE_URL`
+- `TSUZURI_SEARXNG_BASE_URL` (external-search mode; overridden for bundled mode)
+- `TSUZURI_SEARXNG_SECRET` (bundled-search mode)
 - `TSUZURI_LLM_BASE_URL`
 - `TSUZURI_LLM_MODEL`
 - `TSUZURI_LLM_API_KEY`

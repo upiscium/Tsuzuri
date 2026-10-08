@@ -56,15 +56,28 @@ docker-build tag="tsuzuri:local":
     @echo "==> Building Docker image {{tag}}..."
     docker build -t {{tag}} .
 
-# Docker ComposeでAPIを起動します
+# Docker ComposeでAPIと同梱SearXNGを起動します
 docker-up:
-    @echo "==> Starting Tsuzuri API with Docker Compose..."
+    @echo "==> Starting Tsuzuri API and bundled SearXNG..."
     docker compose up --build
 
-# Docker ComposeでAPIを停止します
+# Docker ComposeでAPIとSearXNGを停止します
 docker-down:
-    @echo "==> Stopping Tsuzuri API with Docker Compose..."
+    @echo "==> Stopping Tsuzuri API and bundled SearXNG..."
     docker compose down
+
+# 既存の外部SearXNGを使い、同梱SearXNGを起動しません
+docker-up-external:
+    @echo "==> Starting Tsuzuri API with an external SearXNG endpoint..."
+    docker compose -f docker-compose.yml up --build
+
+# 外部SearXNG構成のみを停止します
+docker-down-external:
+    docker compose -f docker-compose.yml down
+
+# APIコンテナから同梱SearXNGの実検索結果とエンジン障害を確認します
+docker-search-smoke:
+    docker compose exec -T tsuzuri-api python -c 'import json, urllib.parse, urllib.request; q = urllib.parse.urlencode({"q": "Linux kernel vulnerabilities", "format": "json", "categories": "general,news"}); result = json.load(urllib.request.urlopen("http://searxng:8080/search?" + q, timeout=20)); print("search_results=", len(result.get("results", [])), "unresponsive_engines=", result.get("unresponsive_engines", [])); assert result.get("results"), "SearXNG produced no search results"'
 
 # =============================================================================
 # 複合タスク (Pipelines)

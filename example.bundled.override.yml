@@ -1,0 +1,45 @@
+# Overlay for standalone `example.compose.yml` (copy to `compose.override.yml`).
+# For an EXTERNAL search endpoint, bypass this override:
+#   docker compose -f compose.yml up --build
+services:
+  tsuzuri:
+    # The legacy standalone base example builds v0.1.1. Bundle mode builds
+    # a selectable revision so v0.2's OpenAI-compatible runtime can be used.
+    build:
+      context: https://github.com/uPiscium/Tsuzuri.git#${TSUZURI_SOURCE_REF:-main}
+    image: tsuzuri:bundled
+    environment:
+      TSUZURI_SEARXNG_BASE_URL: http://searxng:8080
+    depends_on:
+      searxng:
+        condition: service_healthy
+
+  searxng:
+    image: ${TSUZURI_SEARXNG_IMAGE:-ghcr.io/searxng/searxng:2026.10.7-6671d89be}
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      SEARXNG_SECRET: ${TSUZURI_SEARXNG_SECRET:?Set TSUZURI_SEARXNG_SECRET in .env (e.g. openssl rand -hex 32)}
+      SEARXNG_LIMITER: "false"
+      SEARXNG_PUBLIC_INSTANCE: "false"
+      FORCE_OWNERSHIP: "false"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/searxng/.venv/bin/python
+        - -c
+        - |
+          import urllib.request
+          urllib.request.urlopen("http://127.0.0.1:8080/config", timeout=5)
+      interval: 20s
+      timeout: 8s
+      retries: 8
+      start_period: 30s
+
+volumes:
+  searxng-cache:
