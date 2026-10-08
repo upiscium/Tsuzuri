@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
+from typing import Any
 
 from tsuzuri.llm.map_summarizer import MapSummarizer
 from tsuzuri.schemas import ExtractedDocument
@@ -9,9 +10,16 @@ class FakeChatClient:
     def __init__(self, responses: list[str]) -> None:
         self.responses = responses
         self.prompts: list[str] = []
+        self.schemas: list[dict[str, Any] | None] = []
 
-    async def chat(self, prompt: str) -> str:
+    async def chat(
+        self,
+        prompt: str,
+        *,
+        response_schema: dict[str, Any] | None = None,
+    ) -> str:
         self.prompts.append(prompt)
+        self.schemas.append(response_schema)
         return self.responses.pop(0)
 
 
@@ -65,6 +73,11 @@ def test_map_summarizer_parses_json_summary() -> None:
         assert summary.doc_id == "Source-1"
         assert summary.relevance_score == 4
         assert "https://example.com/news" not in client.prompts[0]
+        assert "Search Query: AI regulation" in client.prompts[0]
+        assert "Relevance scoring rubric:" in client.prompts[0]
+        assert '"relevance_score": 1' not in client.prompts[0]
+        assert client.schemas[0] is not None
+        assert client.schemas[0]["title"] == "MapSummary"
 
     asyncio.run(run())
 
@@ -102,5 +115,6 @@ def test_map_summarizer_retries_with_repair_prompt() -> None:
         assert summary.short_summary == "Repaired summary."
         assert len(client.prompts) == 2
         assert "Repair the following invalid JSON response" in client.prompts[1]
+        assert all(schema is not None for schema in client.schemas)
 
     asyncio.run(run())

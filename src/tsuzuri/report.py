@@ -3,7 +3,12 @@
 import re
 from collections.abc import Iterable
 
-from tsuzuri.schemas import ExtractedDocument, FinalReport, MapSummary
+from tsuzuri.schemas import (
+    ExtractedDocument,
+    FinalReport,
+    MapSummary,
+    ReportSynthesis,
+)
 
 SOURCE_ID_PATTERN = re.compile(r"\[Source-(\d+)]")
 
@@ -66,21 +71,51 @@ def render_final_report(
     )
 
 
+def render_synthesized_report(
+    *,
+    query: str,
+    synthesis: ReportSynthesis,
+    documents: Iterable[ExtractedDocument],
+) -> FinalReport:
+    """Render a structured global reduce result into cited Markdown."""
+    lines = ["## Executive Summary", ""]
+    for point in synthesis.executive_summary:
+        lines.append(f"- {point.text}{_citation_suffix(point.source_ids)}")
+
+    lines.extend(["", "## Key Developments", ""])
+    for point in synthesis.key_developments:
+        lines.append(f"- {point.text}{_citation_suffix(point.source_ids)}")
+
+    lines.extend(["", "## Uncertainties", ""])
+    if synthesis.uncertainties:
+        for point in synthesis.uncertainties:
+            lines.append(f"- {point.text}{_citation_suffix(point.source_ids)}")
+    else:
+        lines.append(
+            "- No material uncertainty was identified in the selected sources."
+        )
+
+    title = synthesis.headline.strip() or f"Research Brief: {query}"
+    return render_final_report(title, "\n".join(lines), documents)
+
+
 def render_news_brief(
     *,
     query: str,
     summaries: Iterable[MapSummary],
     documents: Iterable[ExtractedDocument],
+    min_relevance_score: int = 3,
 ) -> FinalReport:
-    """Render a simple cited Markdown news brief from map summaries."""
+    """Render a deterministic fallback brief from map summaries."""
     useful_summaries = [
         summary
         for summary in summaries
-        if not summary.is_search_noise and summary.relevance_score >= 3
+        if not summary.is_search_noise
+        and summary.relevance_score >= min_relevance_score
     ]
     if not useful_summaries:
         return render_final_report(
-            f"News Brief: {query}",
+            f"Research Brief: {query}",
             "No sufficiently relevant source summaries were generated.",
             documents,
         )
@@ -108,4 +143,9 @@ def render_news_brief(
             "- No major uncertainties were identified in the selected summaries."
         )
 
-    return render_final_report(f"News Brief: {query}", "\n".join(lines), documents)
+    return render_final_report(f"Research Brief: {query}", "\n".join(lines), documents)
+
+
+def _citation_suffix(source_ids: list[str]) -> str:
+    unique_ids = list(dict.fromkeys(source_ids))
+    return "".join(f" [{source_id}]" for source_id in unique_ids)

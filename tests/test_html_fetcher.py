@@ -117,6 +117,6 @@ def test_html_fetcher_uses_fallback_after_invalid_extraction() -> None:
 
         assert isinstance(result, ExtractedDocument)
         assert result.extraction_method == "playwright_trafilatura"
-        assert result.status_code is None
+        assert result.status_code == 200
 
     asyncio.run(run())
