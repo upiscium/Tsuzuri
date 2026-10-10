@@ -25,6 +25,6 @@
 
 - [実装・実験の統括 Issue #4](https://github.com/upiscium/TSUZRI/issues/4)
 - [P0 コントラクト Draft PR #5](https://github.com/upiscium/TSUZRI/pull/5)
-- [P0 実装計画](../../impl-plans/coverage-first-p0.md)（PR #5 で追加されるため、未マージ時はリンク先が存在しない）
+- [P0 実装計画（Draft PR #5 のブランチ）](https://github.com/upiscium/TSUZRI/blob/feat/coverage-p0-contracts/impl-plans/coverage-first-p0.md)
 
 記録日：2026-10-10（JST）。
